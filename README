@@ -1,0 +1,38 @@
+This is SE-361 Team A's Pizza Delivery System. This project was created as per
+the requirements of the SE-361 class.
+
+                        ##################################
+                        ###         How to Run         ###
+                        ##################################
+1. javac *.java
+2. java PDSys [cli/gui]
+
+                        ##################################
+                        ###         Features           ###
+                        ##################################
+
+1. Add orders to be delivered
+2. Cancel orders at any point (even while they're on their way to be delivered)
+3. View past orders and their transit through the kitchen and delivery process
+4. Track locations of drivers (where they are en route to, etc)
+5. Alter simulation speed while simulation is running
+6. View customers
+7. Alter kitchen configuration via the configuration file.
+8. Pause/Play simulation
+9. Edit customers name/phone/address
+
+                        ##################################
+                        ###         Project Info       ###
+                        ##################################
+Authors:
+    * Ryan Brown
+    * Grant Kurtz
+    * Jason Greaves
+    * Matthew Frey
+    * Svyatoslav Sivov
+
+The whole project is managed through Mercurial as hosted on BitBucket behind a
+private repository. Our project can be found at the following link:
+https://bitbucket.org/mmmeff/pdsys
+
+This file was modified by IntelliJ IDEA 10.5.2 for binding GitHub repository
