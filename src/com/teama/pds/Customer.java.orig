@@ -1,0 +1,117 @@
+package com.teama.pds;
+
+import javax.imageio.IIOException;
+import java.util.ArrayList;
+
+/**
+ * Author:		Grant Kurtz
+ * An Entity class that maintains state information for a given customer who
+ * has placed an order in our system.
+ */
+public class Customer {
+
+	// instance variables
+	private String name;
+	private String phone_number;
+	private String location;
+	private ArrayList<String> location_list = new ArrayList<String>();
+
+
+	/**
+	 * Default Constructor
+	 * Initializes a John Doe.
+	 * TODO: Don't make this rely on hard-coded locations.
+	 */
+	public Customer() {
+
+		// List of location strings for sake of testing
+		location_list = new ArrayList<String>();
+		location_list.add("RIT");
+		location_list.add("University of Rochester");
+		location_list.add("Nazareth College");
+		location_list.add("St. John Fisher");
+		location_list.add("Roberts Wesleyan College");
+		location_list.add("Monroe Community College");
+	}
+
+	/**
+	 * gets the name of the customer
+	 *
+	 * @return name of the customer
+	 */
+	public String getName() {
+		return name;
+	}
+
+	/**
+	 * sets the location of the customer
+	 * 
+	 * @param location Location customer wants set. Is now a string for sake of testing
+	 */
+	public void setLocation(String location) throws Exception{
+		if (location_list.contains(location)) {
+			this.location = location;
+		} else {
+			throw new Exception("Incorrect location");
+		}
+	}
+
+	/**
+	 * @param name 	The name customer of the customer
+	 */
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	/**
+	 * @return The location of the customer
+	 */
+	public String getLocation() {
+		return location;
+	}
+
+	/**
+	 * @return 	The customer's phone number
+	 */
+	public String getPhoneNumber() {
+		return phone_number;
+	}
+
+	/**
+	 * @return	A formatted string that represents the phone-number of this
+	 * 			customer.
+	 */
+	public String printPhoneNumber() {
+		return "(" + phone_number.substring(0, 3) + ")" +
+				" " + phone_number.substring(3, 6) + "-" +
+				phone_number.substring(6, phone_number.length());
+	}
+
+	/**
+	 * @param phone_number 	The phone number of the customer.
+	 */
+	public void setPhoneNumber(String phone_number) throws Exception{
+        String formattedNumber;
+        if (phone_number.length() != 10){
+            formattedNumber = format_phone_number(phone_number);
+            if (formattedNumber.length() != 10){
+                throw new Exception("Incorrectly formatted number");
+            }
+        }
+		this.phone_number = phone_number;
+	}
+
+    private String format_phone_number(String number){
+        int length = number.length();
+        for (int i = 0; i < length; i++){
+            if (!Character.isDigit(number.charAt(i)))
+            {
+                number = number.substring(0, i) + number.substring(i+1,
+						number.length());
+                i--;
+                length--;
+            }
+        }
+        return number;
+    }
+}

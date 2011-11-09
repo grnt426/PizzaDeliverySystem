@@ -1,0 +1,159 @@
+package com.teama.pds;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+/**
+ * @author Matthew Frey,
+ *
+ * This will be a short-lived frame for handling authentication.
+ */
+class AuthView{
+
+    Controller controller;
+    private boolean failMode = false;
+
+    /**
+     * The constructor for the AuthView
+     * @param controller The PDS Controller class (MVC)
+     */
+    public AuthView(Controller controller){
+        //this.controller = controller;
+
+        //set the look and feel to our imported library "seaglass"
+        try {
+            UIManager.setLookAndFeel("com.seaglasslookandfeel.SeaGlassLookAndFeel");
+        } catch (Exception e) {
+            System.err.println("Failed to load Seaglass Look and Feel");
+            System.err.println(e);
+            failMode = true;
+        }
+
+        //initialize the frame
+        initFrame();
+    }
+
+
+    public void AddListener(Controller con){
+        this.controller = con;
+    }
+
+    /**
+     * Initializes the auth window
+     */
+    private void initFrame(){
+
+        //initialize our individual components
+        final JFrame authFrame = new JFrame();
+        JLabel usernameLabel = new JLabel("Username: ");
+        JLabel passwordLabel = new JLabel("Password: ");
+        JLabel rememberLabel = new JLabel("Remember me: ");
+        JCheckBox rememberCheckBox = new JCheckBox();
+        final JTextField usernameTextField = new JTextField(10);
+        final JPasswordField passwordField = new JPasswordField(10);
+        JButton submitButton = new JButton("Submit");
+        JButton cancelButton = new JButton("Cancel");
+        JPanel mainPanel = new BackgroundPanel("img/auth-bg.jpg");
+        JPanel buttonPanel = new JPanel();
+        JPanel centerPanel = new JPanel();
+        JPanel usernamePanel = new JPanel();
+        JPanel passwordPanel = new JPanel();
+        Font labelFont = new Font("Verdana", Font.BOLD, 14);
+        Font buttonFont = new Font("Verdana", Font.PLAIN, 12);
+
+        //configure the components-------------------------------------
+
+        //usernameLabel
+        usernameLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        usernameLabel.setForeground(Color.WHITE);
+        usernameLabel.setFont(labelFont);
+
+        //passwordLabel
+        passwordLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        passwordLabel.setForeground(Color.WHITE);
+        passwordLabel.setFont(labelFont);
+
+        //usernameTextField
+		usernameTextField.setToolTipText("Enter your username");
+        usernameTextField.setColumns(20);
+
+        //passwordTextField
+		passwordField.setToolTipText("Enter your password");
+        passwordField.setColumns(20);
+
+        //submitButton
+        submitButton.setFont(buttonFont);
+        submitButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                //TODO confirm auth through model once authorization code is in
+
+            }
+        });
+        
+
+        //cancelButton
+        cancelButton.setFont(buttonFont);
+        cancelButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                //TODO make cancelButton in auth less brutal
+                System.exit(0);
+            }
+        });
+
+        //usernamePanel
+        usernamePanel.setLayout(new FlowLayout());
+        usernamePanel.add(usernameLabel);
+        usernamePanel.add(usernameTextField);
+
+        //passwordPanel
+        passwordPanel.setLayout(new FlowLayout());
+        passwordPanel.add(passwordLabel);
+        passwordPanel.add(passwordField);
+
+        //buttonPanel
+        buttonPanel.setLayout(new FlowLayout());
+        buttonPanel.add(submitButton);
+        buttonPanel.add(cancelButton);
+
+        //centerPanel
+        centerPanel.add(usernamePanel, BorderLayout.NORTH);
+        centerPanel.add(passwordPanel, BorderLayout.SOUTH);
+
+        //authFrame
+        //authFrame.setLayout(new FlowLayout());
+        authFrame.setBackground(new Color(100, 2, 100));
+
+        //mainPanel
+        mainPanel.setLayout(new BorderLayout());
+        mainPanel.setBackground(Color.BLACK);
+        mainPanel.setSize(500,200);
+
+        //add components to mainPanel-----------------------------------
+        mainPanel.add(centerPanel, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        //end component configuration----------------------------------
+
+        //configure fail mode readability
+        if (failMode){
+            usernameLabel.setForeground(Color.BLACK);
+            passwordLabel.setForeground(Color.BLACK);
+        }
+
+        //fire it up
+        authFrame.add(mainPanel);
+        Dimension screenDims = Toolkit.getDefaultToolkit().getScreenSize();
+        authFrame.setTitle("Login to A-Team PDS");
+        int width = 450;
+        int height = 150;
+        authFrame.setSize(new Dimension(width, height));
+        authFrame.setLocation((screenDims.width - width) / 2,
+                (screenDims.height - height) / 2);
+        authFrame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        authFrame.setResizable(false);
+        authFrame.setVisible(true);
+    }
+
+}

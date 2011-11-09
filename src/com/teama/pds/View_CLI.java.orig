@@ -1,0 +1,542 @@
+package com.teama.pds;
+
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+
+/**
+ * Author: Matthew Frey, Svyatoslav Sivov
+ *
+ * This class will be the Command Line Interface (CLI) for our Model
+ * Should be interchangeable with future GUI views.
+ *
+ */
+
+class View_CLI {
+    //Instance Variables
+    private Controller controller;
+    private final Scanner scan;
+    private boolean running;
+    private String input;
+	private final ArrayList<String> options;
+
+    /**
+     * Constructor for the CLI View
+     * @param
+     */
+    public View_CLI(){
+
+        //controller = c;
+        scan = new Scanner(System.in);
+
+		// setup the options the user can choose
+		options = new ArrayList<String>();
+		options.add("Logout");
+		options.add("Add an order");
+		options.add("View orders");
+		options.add("View Event History");
+		options.add("Start Simulation");
+		options.add("Pause Simulation");
+		options.add("Change Simulation Speed");
+		options.add("Print Simulation Info");
+		options.add("Print Address Book");
+		options.add("Print Order Data");
+//		options.add("View Events Live");
+        //runCLI();
+    }
+
+    public void AddListener(Controller c){
+        this.controller = c;
+    }
+
+	/**
+	 * The main control loop for the program, repeatedly asks for user input
+	 * until the user chooses to quit.
+	 */
+    public void runCLI(){
+        printWelcome();
+        running = true;
+        while(running){
+            printMainOptions();
+            //Todo: remove the -1 in this call below
+            switch(getIntSelection(0, options.size() - 1)){
+				case 0:	killCLI(); break;
+				case 1: addOrder(); break;
+				case 2: viewOrders(); break;
+				case 3: viewHistory(); break;
+				case 4:
+					 if (!controller.getSimulationStatus()){
+						controller.startSimulation();
+					} else {
+						System.err.println("Simulation is already running. " +
+								"Cannot start.");
+					}
+					break;
+				case 5:
+					 if (controller.getSimulationStatus()){
+						controller.endSimulation();
+					} else {
+						System.err.println("Simulation isn't running yet. " +
+								"Cannot pause.");
+					}
+					break;
+				case 6: changeSpeed(); break;
+				case 7:	printSimulationInfo(); break;
+				case 8: printCustomers(); break;
+//				case 9: viewLiveEventHistory(); break;
+				case 9: printOrderData(); break;
+				default:  System.err.println("How did you get here? You " +
+						"should fix your getIntSelection() method...");
+			}
+        }
+    }
+
+	private void printOrderData() {
+		System.out.println("======================================\n" +
+				"\t\tAggregate Order Data\n" +
+				"======================================\n");
+		OrderList orderHistory = controller.getOrderData();
+		NumberFormat formatter = new DecimalFormat("0.00");
+		int total_canceled_orders = (orderHistory.getTotalOrders() -
+					orderHistory.getTotalNonCanceledOrders());
+		System.out.println("\tTotals");
+		System.out.println("\t\tOrders: " + orderHistory.getTotalOrders() +
+				"\n\t\tCanceled Orders: " + total_canceled_orders + "\n" +
+				"\t\tTendered: $" +
+				formatter.format(orderHistory.getTotalTendered()) + "\n" +
+				"\tAverages\n" +
+				"\t\tCost Per Order: $" +
+				formatter.format(orderHistory.getAverageOrderCost()) +
+				"\n\t\tOrder Creation Time: " +
+				formatter.format(orderHistory.getAverageTotalCreationTime())
+				+ "\n\t\tOrder Delivery Time: " +
+				formatter.format(orderHistory.getAverageTotalDeliveryTime())
+		);
+		System.out.print("\nPress enter to continue...");
+        scan.nextLine();
+	}
+
+	/**
+	 * NOTE: DO NOT USE.  Currently does not work.
+	 */
+//	private void viewLiveEventHistory() {
+//		ArrayList<Object> derps = new ArrayList<Object>();
+//
+//		System.out.println("Press enter after each event to get the next one");
+//		String lastEvent = "";
+//		String newEvent;
+//		while(true){
+//			newEvent = model.printLastEvent();
+//			if(!lastEvent.equals(newEvent)){
+//				System.out.println(newEvent);
+//				lastEvent = newEvent;
+//			}
+//			if(derps.size() != 0)
+//				break;
+//			try{
+//				Thread.sleep(500);
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//			}
+//		}
+//	}
+
+	/**
+	 * Prints status information on the simulation.
+	 */
+	private void printSimulationInfo() {
+		System.out.println("======================================\n" +
+			"\t\tSimulation Information\n" +
+			"======================================\n" +
+			"\tCurrent Time Code (TC): " + controller.getTime().getCurTime() +
+			"\n\tTick Rate: " + controller.getTickRate());
+	}
+
+	/**
+	 * Prints the entire history of the simulation.
+	 */
+	private void viewHistory() {
+		System.out.println(controller.printEventHistory()+"\n");
+        controller.endSimulation();
+        System.out.print("Press Enter to continue simulation...");
+        scan.nextLine();
+        controller.startSimulation();
+	}
+
+	/**
+	 * Prints the welcome message for our project.
+	 */
+	private void printWelcome(){
+        System.out.println("\nWelcome to The A-Team's Pizza Delivery System.");
+        System.out.println("----------------------------------------------");
+    }
+
+	/**
+	 * Loops through and prints all available options.
+	 */
+    private void printMainOptions(){
+        System.out.println("\nPlease choose an option from below:");
+        for(int i = 1; i < options.size(); i++){
+			System.out.println(i + ": " + options.get(i));
+		}
+		System.out.println("0: " + options.get(0));
+    }
+
+	/**
+	 * Handles the user input necessary to add an order to the model, complete
+	 * with all the food items and customer information.
+	 */
+    private void addOrder(){
+        //start by getting customer's phone number
+        String phone_number = "";
+        boolean valid_number = false;
+        System.out.print("\nPlease, enter customer's phone number: ");
+        while (!valid_number){
+            String temp = scan.nextLine();
+            phone_number = format_phone_number(temp);
+            if (phone_number.length() == 10)
+                valid_number = true;
+            else
+                System.out.print("\nInvalid number. Please re-enter:");
+        }
+
+        Order new_order = new Order( new TimeReader(controller.getTime()),
+				controller.getMenu());
+
+        //ask for order details and create such order
+        int selec = 0;
+        while (selec != 4)  {
+            System.out.println("\nWhat would you like to order?");
+            System.out.println("1: Pizza");
+            System.out.println("2: Pizza Logs");
+            System.out.println("3: Tossed Salad");
+            System.out.println("4: Checkout");
+            selec = getIntSelection(1, 4);
+            if (selec == 1){
+                controller.addPizza(new_order);
+            }
+            else if (selec == 2){
+                controller.addPizzaLogs(new_order);
+            }
+            else if (selec == 3){
+                controller.addTossedSalad(new_order);
+            }
+            else if (selec == 4){
+                //make a customer or get info of already existing one
+                Customer current_customer = getCustomer(phone_number);
+                //modify order info and add to the model, if order isn't empty
+                new_order.setCustomer(current_customer);
+                new_order.setLocation(current_customer.getLocation());
+                new_order.setId(current_customer.getPhoneNumber());
+                if (new_order.getItems().getCount() == 0){
+                    System.out.print("\nOrder was empty and was discarded.\n");
+                }
+                else{
+                    controller.addOrder(new_order);
+
+                    //display the order
+                    System.out.print("\nThe following order will be processed:");
+                    new_order.print();
+                }
+            }
+        }
+    }
+
+    /*
+     * Prints out all the orders
+     */
+    private void viewOrders(){
+        int i = 1;
+        if (controller.getOrders().getCount() > 0)
+            System.out.println("\nThere are following orders:");
+        else
+            System.out.println("\nThere are no orders.");
+        for (Order o : controller.getOrderData().getOrders()){
+            System.out.print("\nOrder #" + i);
+            o.print();
+            i++;
+        }
+        System.out.print("\nPress enter to continue...");
+        scan.nextLine();
+    }
+
+	/**
+	 * Alters the speed of the simulation.
+	 */
+    private void changeSpeed(){
+        System.out.println("\n\n\nChanging speed of simulation:\n");
+        System.out.println("Please enter a time (in seconds):");
+        double sInput = getRangeSelection(0.01, 10.0);
+        controller.changeSimulationSpeed(sInput);
+    }
+
+	/**
+	 * Totally ends the program.
+	 */
+    private void killCLI(){
+        System.out.println("\nUser has now logged out.");
+        controller.endSimulation();
+        running = false;
+        new AuthCLI(controller);
+    }
+
+	/**
+	 * Handles processing input for Real Numbers (mathematical).
+	 * @param low	The lowest value allowed, exclusive.
+	 * @param high	The highest value allowed, exclusive.
+	 * @return		The value as chosen by the user.
+	 */
+	private double getRangeSelection(double low, double high){
+		input = null;
+		double d_in = 0.0;
+        while (input == null){
+            System.out.print("\nPlease enter your selection" +
+                "[" + low + "-" + high + "]: ");
+            input = scan.nextLine();
+
+            try {
+                d_in = Double.parseDouble(input);
+            } catch (NumberFormatException e){
+                System.err.println("You did not enter a valid selection." +
+                        " Please try again.\n");
+                input = null;
+            } finally {
+                if (d_in > high ||d_in < low){
+                    System.err.println("You did not enter a valid selection." +
+                            " Please try again.\n");
+                    input = null;
+                }
+            }
+        }
+        return d_in;
+	}
+
+    /**
+     * Get an integer inputted by the user within the
+     * specified range
+     * @param low the low range for requested input
+     * @param high the highest limit for the requested input
+     * @return the user inputted integer
+     */
+    private int getIntSelection(int low, int high){
+        input = null;
+		int int_input = 0;
+        while (input == null){
+            System.out.print("\nPlease enter your selection" +
+                "[" + low + "-" + high + "]: ");
+            input = scan.nextLine();
+
+            try {
+                int_input = Integer.parseInt(input);
+            } catch (NumberFormatException e){
+                System.out.println("You did not enter a valid selection." +
+                        " Please try again.\n");
+                input = null;
+                int_input = low;
+            } finally {
+                if (int_input > high ||int_input < low){
+                    System.out.println("You did not enter a valid selection." +
+                            " Please try again.\n");
+                    input = null;
+                }
+            }
+        }
+        return int_input;
+    }
+
+    /**
+     * This method serves same purpose as getIntSelection() but is more general.
+     *  May be used by other classes to process input.
+     *  THE COUPLING. IT BURNS.
+     * @param low the low range for requested input
+     * @param high the highest limit for the requested input
+     * @return inputted integer
+     */
+    public static int getIntSelect(int low, int high){
+        String input = null;
+        int int_input = 0;
+        Scanner scan = new Scanner(System.in);
+        while (input == null){
+            System.out.print("\nPlease enter your selection" +
+                    "[" + low + "-" + high + "]: ");
+            input = scan.nextLine();
+
+            try {
+                int_input = Integer.parseInt(input);
+            } catch (NumberFormatException e){
+                System.out.println("You did not enter a valid selection." +
+                        " Please try again.\n");
+                input = null;
+                int_input = low;
+            } finally {
+                if (int_input > high || int_input < low){
+                    System.out.println("You did not enter a valid selection." +
+                            " Please try again.\n");
+                    input = null;
+                }
+            }
+        }
+        return int_input;
+    }
+
+    /**
+     * Removes all non-integer characters from the string, thus leaving phone
+	 * number as a sequence of 10 digits
+	 * @param number	The user inputted version of their phone number.
+	 * @return			A stripped version of the phone number.
+	 */
+    private String format_phone_number(String number){
+        int length = number.length();
+        for (int i = 0; i < length; i++){
+            if (!Character.isDigit(number.charAt(i)))
+            {
+                number = number.substring(0, i) + number.substring(i+1,
+						number.length());
+                i--;
+                length--;
+            }
+        }
+        return number;
+    }
+
+    /**
+     * prints a list of all customers in the model
+     */
+	private void printCustomers(){
+		System.out.println(controller.printAllCustomers());
+	}
+
+    /**
+     * If customer with given phone number exists, uses this customer's profile
+     * If not, creates a new customer
+     * @param number 	The phone number of the customer
+     * @return 			The customer to use in the order
+     */
+    private Customer getCustomer(String number){
+        boolean customer_exists = controller.customerExists(number);
+        if (customer_exists){
+			return controller.getCustomer(number);
+        }
+        else {
+            Customer new_customer = new Customer();
+            String name = "";
+            while (name.equals("")){
+                System.out.print("\nEnter customer's name: ");
+                name = scan.nextLine();
+            }
+            new_customer.setPhoneNumber(number);
+            new_customer.setName(name);
+            System.out.println("\nWhat is customer's location?");
+            System.out.println("1: RIT");
+            System.out.println("2: University of Rochester");
+            System.out.println("3: Nazareth College");
+            System.out.println("4: St. John Fisher");
+            System.out.println("5: Roberts Wesleyan College");
+            System.out.println("6: Monroe Community College");
+            int select = getIntSelection(1, 6);
+            if (select == 1){
+                new_customer.setLocation("RIT");
+            }
+            else if (select == 2){
+                new_customer.setLocation("University of Rochester");
+            }
+            else if (select == 3){
+                new_customer.setLocation("Nazareth College");
+            }
+            else if (select == 4){
+                new_customer.setLocation("St. John Fisher");
+            }
+            else if (select == 5){
+                new_customer.setLocation("Roberts Wesleyan College");
+            }
+            else if (select == 6){
+                new_customer.setLocation("Monroe Community College");
+            }
+            controller.addCustomer(new_customer);
+            return new_customer;
+        }
+    }
+
+    /**
+	 * Ask use for size of the pizza he wants
+	 *
+	 * @return	The string representation of this Pizza's size.
+	 */
+	String askSize() {
+		String pizza_size = null;
+		System.out.println("\nChoose size:");
+		System.out.println("1: Small");
+		System.out.println("2: Medium");
+		System.out.println("3: Large");
+		int selec = View_CLI.getIntSelect(1, 3);
+		if (selec == 1) {
+			pizza_size = "Small Pizza";
+		} else if (selec == 2) {
+			pizza_size = "Medium Pizza";
+		} else if (selec == 3) {
+			pizza_size = "Large Pizza";
+		}
+		return pizza_size;
+	}
+
+/**
+	 * Process user input until a successful selection of a valid topping is
+	 * made
+	 * @return		The chosen toppings from the user
+	 */
+	ArrayList<PizzaItem.Topping> askToppings() {
+		int selec = 0;
+		ArrayList<PizzaItem.Topping> toppings = new ArrayList<PizzaItem.Topping>();
+		while (selec != 6) {
+			System.out.println("\nWould you like additional toppings?");
+			System.out.println("1: Pepperoni");
+			System.out.println("2: Sausage");
+			System.out.println("3: Onions");
+			System.out.println("4: Peppers");
+			System.out.println("5: Mushrooms");
+			System.out.println("6: No");
+			selec = View_CLI.getIntSelect(1, 6);
+			if (selec != 6)
+				System.out.println("\n++++++++++++++++++++++++++++++++++++++++++");
+			if (selec == 1) {
+				toppings.add(PizzaItem.Topping.PEPPERONI);
+				System.out.println("Pepperoni has been added to your pizza");
+			} else if (selec == 2) {
+				toppings.add(PizzaItem.Topping.SAUSAGE);
+				System.out.println("Sausage has been added to your pizza");
+			} else if (selec == 3) {
+				toppings.add(PizzaItem.Topping.ONIONS);
+				System.out.println("Onions have been added to your pizza");
+			} else if (selec == 4) {
+				toppings.add(PizzaItem.Topping.PEPPERS);
+				System.out.println("Peppers have been added to your pizza");
+			} else if (selec == 5) {
+				toppings.add(PizzaItem.Topping.MUSHROOMS);
+				System.out.println("Mushrooms have been added to your pizza");
+			}
+			if (selec != 6)
+				System.out.println("++++++++++++++++++++++++++++++++++++++++++");
+		}
+		return toppings;
+	}
+
+    /**
+	 * @return	the amount of topping the user selected
+	 */
+	double askToppingAmount() {
+		double topping_amount = 1.0;
+		System.out.println("\nChoose topping amount:");
+		System.out.println("1: Whole");
+		System.out.println("2: Half");
+		int selec = View_CLI.getIntSelect(1, 3);
+		if (selec == 1) {
+			topping_amount = 1.0;
+		} else if (selec == 2) {
+			topping_amount = 0.5;
+		}
+		return topping_amount;
+	}
+
+}

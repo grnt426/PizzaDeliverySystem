@@ -1,0 +1,570 @@
+package com.teama.pds;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionListener;
+import java.net.PasswordAuthentication;
+import java.util.*;
+import java.util.List;
+
+/**
+ * Author: Jason Greaves
+ *
+ * Handles all of the history recordings, customer addings, addressbook modding,
+ * and passes information from the view to the model and vice versa.
+ */
+public class Controller {
+
+    private TimeReader time_reader;
+    private Model model;
+    private View_CLI view_cli;
+    private AuthView auth_view;
+    private View_GUI view_gui;
+    private History history;
+    private AddressBook addresses;
+    private boolean sim_status;
+    private Time time;
+
+    public Controller(Model model, View_CLI view_cli){
+
+        time = model.getTime();
+        time_reader = new TimeReader(time);
+        this.model = model;
+        this.view_cli = view_cli;
+        view_cli.AddListener(this);
+        history = model.getHistory();
+
+        addresses = model.getAddresses();
+    }
+
+    /**
+     * A Constructor for our controller that
+     * only takes a model, but requires
+     * that assignAuthView and
+     * assignViewGUI are called
+     * @param model Our software's model
+     */
+    public Controller(Model model){
+        time = model.getTime();
+        time_reader = new TimeReader(time);
+        this.model = model;
+        history = model.getHistory();
+        addresses = model.getAddresses();
+    }
+
+    /**
+     * Adds an order record to the history and give the order to the model.
+     * @param order Order to be given to the model.
+     */
+    public void addOrder(Order order){
+        model.addOrder(order);
+    }
+
+    public void addItemToMake(FoodItem f){
+        model.addItemToMake(f);
+    }
+
+    /**
+     * Assign the Controller an AuthView
+     * @param auth_view The Auth View to be assigned to the controller
+     */
+    public void assignAuthView(AuthView auth_view){
+        this.auth_view = auth_view;
+    }
+
+    /**
+     * Assign the controller a View_GUI
+     * @param view_gui the View_GUI to be assigned to the controller
+     */
+    public void assignViewGUI(View_GUI view_gui){
+        this.view_gui = view_gui;
+    }
+
+    /**
+     * Adds a customer to the address book and records it in the history
+     * @param customer Customer to add to the address book.
+     */
+    public void addCustomer(Customer customer){
+        Record r = new Record("Added Customer " + customer.getName() + ", " + customer.getPhoneNumber() + " ",
+				Record.Status.TRANSITION, model.getTime().getCurTime());
+		history.addEvent(r);
+		addresses.addCustomer(customer);
+        view_gui.updateCustomerPanel();
+    }
+
+    /**
+     * Deletes a customer from the address book, record in history
+     * @return boolean value of success
+     */
+    public boolean deleteCustomer(Customer customer){
+        return addresses.deleteCustomer(customer);
+    }
+
+    /**
+	 * @return	A string representing all the customers that we have created
+	 * 			orders for.
+	 */
+	public String printAllCustomers() {
+		return addresses.toString();
+	}
+
+    /**
+     * @return returns all customers from the address book
+     */
+    public ArrayList<Customer> getAllCustomers(){
+        return addresses.getAllCustomers();
+    }
+
+/**
+	 * @return	A string that prints out the history of all events of this
+	 * 			simulation in human readable form.
+	 */
+	public String printEventHistory() {
+		return history.printEntireHistory() + model.getTime().getCurTime();
+	}
+
+    /**
+	 * Returns a Customer object that has same phone number as input
+	 *
+	 * @param number phone number of desired customer
+	 * @return the Customer object if the customer is found, otherwise null.
+	 */
+	public Customer getCustomer(String number) {
+		return addresses.getRecord(number);
+	}
+
+    /**
+	 * Returns true if model already has information about this customer false
+	 * otherwise.
+	 *
+	 * @param phone_number phone number of the customer to check
+	 * @return true if the customer already exists, otherwise false
+	 */
+	public boolean customerExists(String phone_number) {
+		return addresses.doesRecordExist(phone_number);
+	}
+
+    /**
+	 * @return True if the simulation is running, otherwise false
+	 */
+	public boolean getSimulationStatus() {
+		return model.getSimulationStatus();
+	}
+
+
+    /**
+	 * Starts the whole simulation.  Note, once this is called, orders will
+	 * immediately start to be processed, resources consumed, and finished
+	 * resources produced from/into their respective queues.
+	 */
+	public void startSimulation() {
+		sim_status = model.getSimulationStatus();
+		if (!sim_status) {
+			model.startSimulation();
+		}
+	}
+
+	/**
+	 * Halts the simulation, and forces the timer to discontinue looping.
+	 */
+	public void endSimulation() {
+		if (model.getSimulationStatus()) {
+			model.endSimulation();
+		}
+	}
+
+	/**
+	 * @param TICK_RATE the new value to use for the tick-rate.
+	 */
+	public void changeSimulationSpeed(double TICK_RATE) {
+
+		Record r = new Record("Altering Simulation speed, from " +
+				model.getTickRate() + " to " + TICK_RATE,
+				Record.Status.TRANSITION, model.getTime().getCurTime());
+		history.addEvent(r);
+
+		// if the simulation is running stop, change, and start
+		boolean startAfterwards = model.getSimulationStatus();
+		endSimulation();
+		model.setTickRate(TICK_RATE);
+		if (startAfterwards) {
+			startSimulation();
+		}
+	}
+
+	/**
+	 * @return returns the models current orders list
+	 */
+	public ResourceList<Order> getOrders() {
+		return model.getOrders();
+	}
+
+	/**
+	 * @return Returns the time as observed by the model
+	 */
+	public Time getTime() {
+		return model.getTime();
+	}
+
+	/**
+	 * @return gets the tick rate from the model.
+	 */
+	public double getTickRate() {
+		return model.getTickRate();
+	}
+
+	/**
+	 * @return gets the current PizzaMenu the model has.
+	 */
+	public PizzaMenu getMenu() {
+		return model.getMenu();
+	}
+
+	/**
+	 * Handles generating a Pizza object, and then stores the cusomtized Pizza
+	 * in the Order
+	 *
+	 * @param order the order a pizza will be added to
+	 */
+	public void addPizza(Order order) {
+		//set up creation of CookedItem
+		String pizza_size = view_cli.askSize();
+		CookedItem newItem = null;
+		if (pizza_size.equals("Small Pizza")) {
+			newItem = model.getMenu().getCookedItem("Small Pizza");
+		}
+		if (pizza_size.equals("Medium Pizza")) {
+			newItem = model.getMenu().getCookedItem(pizza_size);
+		}
+		if (pizza_size.equals("Large Pizza")) {
+			newItem = model.getMenu().getCookedItem(pizza_size);
+		}
+		//Now turn CookedItem into PizzaItem
+		double topping_amount = view_cli.askToppingAmount();
+		PizzaItem new_pizza = new PizzaItem(pizza_size, topping_amount, time_reader, newItem);
+
+		//ask for toppings and add them to the pizza
+		ArrayList<PizzaItem.Topping> toppings = view_cli.askToppings();
+		for (PizzaItem.Topping topping : toppings) {
+			new_pizza.addTopping(topping);
+		}
+		//add this pizza to the order
+		order.addItem(new_pizza);
+		System.out.println("\n++++++++++++++++++++++++++++++++++");
+		System.out.println("Pizza has been added to your order");
+		System.out.println("++++++++++++++++++++++++++++++++++");
+	}
+
+	/**
+	 * creates a CookedItem object representing Pizza Logs and adds it to the
+	 * order
+	 *
+	 * @param order The order pizza logs will be added to
+	 */
+	public void addPizzaLogs(Order order) {
+		CookedItem newItem;
+		newItem = model.getMenu().getCookedItem("Pizza Logs");
+		order.addItem(newItem);
+		System.out.println("\n++++++++++++++++++++++++++++++++++++++++");
+		System.out.println("Pizza logs have been added to your order");
+		System.out.println("++++++++++++++++++++++++++++++++++++++++");
+	}
+
+	/**
+	 * creates a FoodItem object representing Tossed Sa;ad and adds it to the
+	 * order
+	 *
+	 * @param order The order that tossed salad will be added to
+	 */
+	public void addTossedSalad(Order order) {
+		FoodItem newItem;
+		newItem = model.getMenu().getUncookedItem("Salad");
+		order.addItem(newItem);
+		System.out.println("\n+++++++++++++++++++++++++++++++++++++++++");
+		System.out.println("Tossed salad has been added to your order");
+		System.out.println("+++++++++++++++++++++++++++++++++++++++++");
+	}
+
+	/**
+	 * Checks the models user list and checks to see if the username and password given
+	 * match any of the user credentials
+	 *
+	 * @param username username given
+	 * @param password password given
+	 * @return if user credentials were found in a user, return true. If not, return false.
+	 */
+	public boolean login(String username, char[] password) {
+		boolean is_valid_user = false;
+		for (User user : model.getUserList()) {
+			if (user.checkAuth(username, password)) {
+				is_valid_user = true;
+				model.setAuthToken(user.getUsername(), user.getPassword(), user.getAuthLevel());
+				break;
+			}
+		}
+		return is_valid_user;
+	}
+
+	/**
+	 * runs the CLI
+	 */
+	public void runCLI() {
+		view_cli.runCLI();
+	}
+
+	/**
+	 * gets the Auth token from the model
+	 *
+	 * @return auth token
+	 */
+	public AuthTokenSingleton getToken() {
+		return model.getToken();
+	}
+
+	/**
+	 * Begin the GUI by switching over to ViewGUI from AuthView
+	 */
+	public void runGUI() {
+		auth_view.toggleVisibility();
+	}
+
+	/**
+	 * Toggles hiding auth / hiding main gui
+	 */
+	public void swapMode() {
+		if (auth_view.visible && !view_gui.visible) {
+			auth_view.toggleVisibility();
+			view_gui.toggleVisibility();
+			view_gui.setAuthOptions();
+		} else if (!auth_view.visible && view_gui.visible) {
+			auth_view.toggleVisibility();
+			view_gui.toggleVisibility();
+			view_gui.setAuthOptions();
+			model.logout();
+		}
+	}
+
+	/**
+	 * Closes down the entire system
+	 */
+	public void abandonShip() {
+		JFrame hiddenFrame = new JFrame();
+		hiddenFrame.requestFocus();
+		Toolkit.getDefaultToolkit().beep();
+		if (JOptionPane.showConfirmDialog(hiddenFrame,
+				"Are you sure you want to quit?",
+				"",
+				JOptionPane.YES_NO_OPTION,
+				JOptionPane.QUESTION_MESSAGE, null) == JOptionPane.YES_OPTION) {
+			//TODO this is where the saving code will be called from
+			//model.getConfigManager().writeConfig();
+			//break down our GUI
+			auth_view.dispose();
+			view_gui.dispose();
+			System.exit(0);
+		} else {
+			//do nothing
+		}
+	}
+
+	/**
+	 * @return Returns a vector of all restaurant history
+	 */
+	public Vector<Record> getHistoryArray() {
+		return model.getHistoryArray();
+	}
+
+	/**
+	 * @return an OrderList of all orders ever
+	 */
+	public OrderList getOrderData() {
+		return model.getOrderHistory();
+	}
+
+	/**
+	 * Cancels the specified Order
+	 *
+	 * @param order The order to be cancelled
+	 */
+	public void cancelOrder(Order order) {
+		model.cancelOrder(order);
+	}
+
+	/**
+	 * Logs out the current user
+	 */
+	public void logout() {
+		model.getToken().logout();
+	}
+
+	/**
+	 * Pulls GUI open to add Order
+	 */
+	public void launchModifyOrderGUI(OrdersPanel oP) {
+		new OrderModifierView(this, oP);
+	}
+
+	/**
+	 * Pulls up the GUI to edit an order (same as new, but for editing)
+	 *
+	 * @param selectedOrder the order to be modified by the modify order view
+	 */
+	public void launchModifyOrderGUI(Order selectedOrder, OrdersPanel oP) {
+		if (selectedOrder != null) {
+			new OrderModifierView(this, selectedOrder, oP);
+		}
+	}
+
+	/**
+	 * pulls modify Customer GUI open to create a new customer
+	 */
+	public void launchCustomerModifyGUI() {
+		new CustomerModifierView(this);
+	}
+
+	public void launchCustomerModifyGUI(Customer customer) {
+		new CustomerModifierView(this, customer);
+	}
+
+	public void submitNewCustomer(String name, String number, String locale) {
+		Customer cust = new Customer();
+		try {
+			cust.setLocation(locale);
+			cust.setName(name);
+			cust.setPhoneNumber(number);
+			addCustomer(cust);
+		} 
+		catch (Exception e) {
+			// TODO: possibly not ignore this error?
+		}
+	}
+
+	/**
+	 * Generic "are you sure?" message
+	 *
+	 * @return boolean value indicating user's response
+	 */
+	public boolean areYouSure(String msg) {
+		JFrame hiddenFrame = new JFrame();
+		hiddenFrame.requestFocus();
+		Toolkit.getDefaultToolkit().beep();
+		if (JOptionPane.showConfirmDialog(hiddenFrame,
+				"Are you sure you want to " + msg + "?",
+				"",
+				JOptionPane.YES_NO_OPTION,
+				JOptionPane.QUESTION_MESSAGE, null) == JOptionPane.YES_OPTION) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * this method deletes an order and tells the calling ordersPanel to update
+	 *
+	 * @param order The order to delete
+	 * @param oP
+	 */
+	public void deleteOrderFromOrdersPanel(Order order, OrdersPanel oP) {
+		model.cancelOrder(order);
+//		oP.updateListings();
+	}
+
+	public ArrayList<String> getLocations() {
+		Object[] oA = (model.getConfigManager().getStoreConfiguration().getLocationMap().keySet().toArray());
+		ArrayList<String> results = new ArrayList<String>();
+		for (Object o : oA) {
+			//System.out.println("LOCATION: " + o.toString());
+			results.add(o.toString());
+		}
+		return results;
+	}
+
+	public ArrayList<Customer> getMatchingCustomers(String search_data) {
+		ArrayList<Customer> custs = new ArrayList<Customer>();
+		custs.addAll(addresses.getPartialMatches(search_data).values());
+		return custs;
+	}
+
+	/**
+	 * @return array list of chefs
+	 */
+	public ArrayList<Chef> getChefs() {
+		return model.getChefs();
+	}
+
+	/**
+	 * @return array list of trucks
+	 */
+	public ArrayList<Truck> getTrucks() {
+		return model.getTrucks();
+	}
+
+	public View_GUI getView_gui() {
+		return view_gui;
+	}
+
+	public void updateCustomerPanelData() {
+		view_gui.updateCustomerPanel();
+	}
+
+	public ArrayList<User> getUsers() {
+		return model.getUserList();
+	}
+
+	public ArrayList<User> getMatchingUsers(String search_data) {
+		ArrayList<User> matched_users = new ArrayList<User>();
+		String name, username;
+		for(User user : getUsers()){
+			name = user.getNameOfUser();
+			username = user.getUsername();
+			if(name.length() > search_data.length()){
+				if(name.substring(0, search_data.length()).equals(
+					search_data)) {
+					matched_users.add(user);
+				}
+			}
+			else if(name.length() == search_data.length()){
+				if(name.equals(search_data)){
+					matched_users.add(user);
+				}
+			}
+			else if(username.length() < search_data.length()){
+				if(username.substring(0,
+						search_data.length()).equals(search_data)){
+					matched_users.add(user);
+				}
+			}
+			else if(username.length() == search_data.length()){
+				if(username.equals(search_data))
+					matched_users.add(user);
+			}
+		}
+		return matched_users;
+	}
+
+	public void deleteUser(User selectedUser) {
+		model.deleteUser(selectedUser);
+	}
+
+	public void launchUserModifyGUI(User selectedUser) {
+		new UserModifierView(this, selectedUser);
+	}
+	public void launchUserModifyGUI(){
+		new UserModifierView(this);
+	}
+
+	public void deleteUser(String username) {
+		model.deleteUser(username);
+	}
+
+	public void submitNewUser(String name, String username, String password,
+							  User.AuthLevel auth_level) {
+		User user = new User(username,  password,  name,  auth_level);
+		model.addUser(user);
+	}
+
+	public User getCurrentlyLoggedInUser() {
+		return model.getLoggedInUser();
+	}
+}

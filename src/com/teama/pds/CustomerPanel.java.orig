@@ -1,0 +1,392 @@
+package com.teama.pds;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.text.NumberFormat;
+import java.util.*;
+import java.util.List;
+import javax.swing.Timer;
+
+/**
+ * This panel will serve to display all customers in the system
+ * Editing of customers also possible
+ * @author Matthew Frey
+ */
+public class CustomerPanel extends JPanel implements ActionListener {
+
+    //variable declaration
+    private Controller controller;
+    private boolean refresherRunning = false;
+    private Timer timer;
+    private ActionListener updater;
+
+    private JToolBar toolBar;
+    private JTable table;
+    private CustomerTableModel customerTableModel;
+	private JScrollPane scrollPane;
+
+    private JButton editButton;
+    private JButton addButton;
+    private JButton deleteButton;
+    private JTextField searchField;
+	private JComboBox sortBySelector;
+	private JComboBox sortDirectionSelector;
+
+	private JPanel allCustomerInfo;
+
+	private String cur_sort_selection;
+	private String cur_sort_direction;
+	private String search_data = "";
+
+	//end variable declaration
+
+
+    /**
+     * default constructor
+     * @param controller Controller in MVC
+     */
+    public CustomerPanel(Controller controller){
+        this.controller = controller;
+        initGUI();
+    }
+
+    private void initGUI(){
+        //get program size
+        Dimension screenDims = Toolkit.getDefaultToolkit().getScreenSize();
+		int width = screenDims.width - 200;
+		int height = screenDims.height - 200;
+
+        //instantiate
+        toolBar = new JToolBar(JToolBar.HORIZONTAL);
+        //table = new JTable(); ~happens later
+        addButton = new JButton(new ImageIcon("img/icon/add.png"));
+        addButton.setToolTipText("Add a customer");
+        editButton = new JButton(new ImageIcon("img/icon/edit.png"));
+        editButton.setToolTipText("Edit selected customer");
+        deleteButton = new JButton(new ImageIcon("img/icon/remove.png"));
+        deleteButton.setToolTipText("Delete selected customer");
+        searchField = new JTextField();
+		searchField.setColumns(20);
+		searchField.addKeyListener(new KeyListener() {
+			public void keyTyped(KeyEvent e) {
+			}
+
+			public void keyPressed(KeyEvent e) {
+			}
+
+			public void keyReleased(KeyEvent e) {
+				doPartialSearch(searchField.getText());
+			}
+		});
+        updater = new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                updateListings();
+            }
+        };
+        customerTableModel = new CustomerTableModel(controller);
+
+        //configure buttons
+        //--set action listeners
+        addButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                addCustomer();
+            }
+        });
+        editButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                editSelectedCustomer();
+            }
+        });
+        deleteButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                //To change body of implemented methods use File | Settings | File Templates.
+            }
+        });
+        searchField.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                //To change body of implemented methods use File | Settings | File Templates.
+            }
+        });
+
+        //--other button tweaks
+
+        //--end button config
+
+		// Misc Toolbar Things
+		// --Sort Control
+		sortBySelector = new JComboBox();
+		sortBySelector.setMaximumSize(new Dimension(150, 50));
+		cur_sort_selection = "Name";
+		sortBySelector.addItem(cur_sort_selection);
+		sortBySelector.addItem("Phone");
+		sortBySelector.addItem("Location");
+		sortBySelector.addItem("Spent");
+		sortBySelector.addItem("Order Ct.");
+		sortBySelector.addActionListener(this);
+
+		sortDirectionSelector = new JComboBox();
+		sortDirectionSelector.setMaximumSize(new Dimension(150, 50));
+		cur_sort_direction = "Ascending";
+		sortDirectionSelector.addItem(cur_sort_direction);
+		sortDirectionSelector.addItem("Descending");
+		sortDirectionSelector.addActionListener(this);
+		// --End Sort Control
+		// end Misc Toolbar Things
+
+        //configure toolbar
+        toolBar.setFloatable(false);
+        toolBar.setPreferredSize(new Dimension(width - width/10, 32));
+        toolBar.setBorder(BorderFactory.createMatteBorder(
+				0, 0, 1, 0, Color.BLACK));
+        toolBar.setLayout(new BoxLayout(toolBar, BoxLayout.X_AXIS));
+
+        //add components to the toolbar
+		JPanel toolbar_options = new JPanel(new BorderLayout());
+		JPanel toolbar_buttons = new JPanel();
+		toolbar_buttons.setLayout(new BoxLayout(toolbar_buttons,
+				BoxLayout.X_AXIS));
+        toolbar_buttons.add(addButton);
+        toolbar_buttons.add(editButton);
+        toolbar_buttons.add(deleteButton);
+        toolbar_buttons.add(searchField);
+		toolbar_options.add(toolbar_buttons, BorderLayout.WEST);
+		JPanel toolbar_sort = new JPanel();
+		toolbar_sort.setLayout(new BoxLayout(toolbar_sort, BoxLayout.X_AXIS));
+		toolbar_sort.add(new JLabel("Sort Options"));
+		toolbar_sort.add(sortBySelector);
+		toolbar_sort.add(sortDirectionSelector);
+		toolbar_options.add(toolbar_sort, BorderLayout.EAST);
+		toolBar.add(toolbar_options);
+
+        //configure table
+        table = new JTable(customerTableModel);
+        //String[][] data = grabTableData();
+        //table = new JTable(data, columns);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+
+        //configure scrollPane
+		allCustomerInfo = new JPanel();
+		allCustomerInfo.setLayout(new BoxLayout(allCustomerInfo,
+				BoxLayout.Y_AXIS));
+		updateCustomerData();
+		scrollPane = new JScrollPane(allCustomerInfo);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+        scrollPane.setMaximumSize(new Dimension(width - width / 10, height - 32));
+        //scrollPane.setBorder(BorderFactory.createTitledBorder("Customers"));
+
+        //add components to scrollPane
+//        scrollPane.add(table);
+
+        //add everything into this panel
+        this.setLayout(new BorderLayout());
+        this.add(toolBar, BorderLayout.PAGE_START);
+        this.add(scrollPane, BorderLayout.CENTER);
+//		this.add(new JLabel("sdfdsf"), BorderLayout.CENTER);
+
+        //configure this panel
+        this.setPreferredSize(new Dimension(width - width/10, height - 31));
+        this.setVisible(false);
+    }
+
+	private void doPartialSearch(String searchContent) {
+		search_data = searchContent;
+		System.out.println(search_data);
+		updateCustomerData();
+	}
+
+    /**
+     * Any updates that need to happen every second get tossed in here
+     */
+    public void updateListings(){
+        //String[] columns = {"Name","Phone","Location"};
+        //table = new JTable(grabTableData(), columns);
+        ////tableDataModel.fire
+        //customerTableModel.fireTableDataChanged();
+    }
+
+    /**
+     * Start the refresh timer
+     */
+    public void startRefresher(){
+        if (!refresherRunning){
+            timer = new Timer(500, updater);
+            timer.start();
+            refresherRunning = true;
+        }
+    }
+
+    /**
+     * Stop the refresh timer
+     */
+    public void stopRefresher(){
+        if (refresherRunning){
+            timer.stop();
+            refresherRunning = false;
+        }
+    }
+
+    /**
+     * Begins editing for a selected customer
+     */
+    private void editSelectedCustomer(){
+        Customer selectedCustomer = getSelectedCustomer();
+        //controller.launchCustomerModifyGUI(selectedCustomer);
+    }
+
+    /**
+     * deletes the selected Customer
+     */
+    private void deleteSelectedCustomer(){
+        if (controller.areYouSure("delete the selected customer")){
+            Customer selectedCustomer = getSelectedCustomer();
+            //get the selected customer
+            if (controller.getAllCustomers().contains(selectedCustomer)){
+                controller.deleteCustomer(selectedCustomer);
+				updateCustomerData();
+            } else {
+                //nothing
+            }
+        } else {
+            //do nothing
+        }
+    }
+
+    private void addCustomer(){
+        controller.launchModifyCustomerGUI();
+    }
+
+    private String formatMoney(double money){
+        NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(getLocale());
+        return currencyFormatter.format(money);
+    }
+
+	public void updateCustomerData() {
+
+		// first, clear out the previous customer data
+		allCustomerInfo.removeAll();
+
+		ArrayList<Customer> customers = getSortedCustomers();
+		
+		// now, rebuild the customer data, one customer at a time, with each
+		// customer getting their own JPanel
+		for(Customer customer : customers){
+			JPanel custPanel = new JPanel();
+			custPanel.setPreferredSize(new Dimension(1200, 100));
+			custPanel.setMaximumSize(new Dimension(1200, 100));
+			custPanel.setAlignmentX(0);
+			custPanel.setBorder(BorderFactory.createTitledBorder(
+					customer.getName()));
+
+			// customer information breakdown
+			JPanel custInfo = new JPanel(new GridLayout(2, 2));
+			custPanel.add(custInfo);
+			custInfo.add(new JLabel("Phone: "));
+			custInfo.add(new JLabel(customer.getPhoneNumber()));
+			custInfo.add(new JLabel("Location: "));
+			custInfo.add(new JLabel(customer.getLocation()));
+
+			// create customer order data
+			OrderList orders = controller.getOrderData();
+			List<Order> custs_orders = orders.getOrdersFromCustomer(customer);
+			int total_spent = 0;
+			for(Order order : custs_orders){
+				if(!order.isOrderCanceled()){
+					total_spent += order.getTotalCost();
+				}
+			}
+
+			// customer Order summary
+			JPanel custOrders = new JPanel(new GridLayout(2, 4));
+			custPanel.add(custOrders);
+			custOrders.add(new JLabel("Total Orders: "));
+			custOrders.add(new JLabel(
+					 custs_orders.size() + ""));
+			custOrders.add(new JLabel("Total Cost: "));
+			custOrders.add(new JLabel(formatMoney(total_spent)));
+
+			allCustomerInfo.add(custPanel);
+		}
+		allCustomerInfo.repaint();
+		allCustomerInfo.revalidate();
+	}
+
+	private Customer getSelectedCustomer(){
+        Customer selection = new Customer();
+        selection = controller.getAllCustomers().get(table.getSelectedRow());
+        return selection;
+    }
+
+	public void actionPerformed(ActionEvent e) {
+		String msg = e.getActionCommand();
+		Object object = e.getSource();
+
+		if(object.equals(sortBySelector)){
+			String sort_by_select = (String) sortBySelector.getSelectedItem();
+			if (!sort_by_select.equals(cur_sort_selection)) {
+				cur_sort_selection = sort_by_select;
+				updateCustomerData();
+			}
+		}
+		else if(object.equals(sortDirectionSelector)){
+			String dir_select = (String)
+					sortDirectionSelector.getSelectedItem();
+			if(!dir_select.equals(cur_sort_direction)){
+				reverseSortDirection();
+			}
+		}
+	}
+
+	private void reverseSortDirection() {
+		cur_sort_direction = cur_sort_direction.equals("Ascending") ?
+				"Descending" : "Ascending";
+		updateCustomerData();
+	}
+
+	private ArrayList<Customer> getSortedCustomers() {
+		ArrayList<Customer> sortedCustomers;
+		if(search_data.length() == 0){
+			sortedCustomers = controller.getAllCustomers();
+		}
+		else{
+			sortedCustomers = controller.getMatchingCustomers(search_data);
+		}
+		Collections.sort(sortedCustomers, new Comparator<Customer>() {
+			public int compare(Customer o1, Customer o2) {
+				if(cur_sort_selection.equals("Name")){
+					return o1.getName().compareTo(o2.getName());
+				}
+				else if(cur_sort_selection.equals("Phone")){
+					return o1.getPhoneNumber().compareTo(o2.getPhoneNumber());
+				}
+				else if(cur_sort_selection.equals("Location")){
+					return o1.getLocation().compareTo(o2.getLocation());
+				}
+				else if(cur_sort_selection.equals("Spent")){
+					OrderList orders = controller.getOrderData();
+					double total_spent = 0;
+					for(Order order : orders.getOrdersFromCustomer(o1))
+						total_spent += order.getTotalCost();
+					for(Order order : orders.getOrdersFromCustomer(o2))
+						total_spent -= order.getTotalCost();
+					return (int)total_spent;
+				}
+				else if(cur_sort_selection.equals("Order Ct.")){
+					OrderList orders = controller.getOrderData();
+					return orders.getOrdersFromCustomer(o1).size() -
+							orders.getOrdersFromCustomer(o2).size();
+				}
+
+				// TODO: handle invalid sort selection
+				System.err.println("Invalid sort selected in CustomerPanel");
+				return 0;
+			}
+		});
+		if(cur_sort_direction.equals("Descending"))
+			Collections.reverse(sortedCustomers);
+		return sortedCustomers;
+	}
+}
